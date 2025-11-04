@@ -1,7 +1,7 @@
 ---
 # install-eza.yml
 - name: Installer eza et ajouter l'alias pour root
-  hosts: debian
+  hosts: all
   become: true
   gather_facts: false
 
