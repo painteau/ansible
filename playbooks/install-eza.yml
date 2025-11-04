@@ -1,0 +1,23 @@
+---
+# install-eza.yml
+- name: Installer eza et ajouter l'alias pour root
+  hosts: debian
+  become: true
+  gather_facts: false
+
+  vars:
+    eza_alias_line: "alias ls='eza --group-directories-first --icons=auto'"
+
+  tasks:
+    - name: Installer eza
+      ansible.builtin.apt:
+        name: eza
+        state: present
+        update_cache: true
+
+    - name: Ajouter l’alias dans /root/.bashrc
+      ansible.builtin.lineinfile:
+        path: /root/.bashrc
+        line: "{{ eza_alias_line }}"
+        state: present
+        insertafter: EOF
