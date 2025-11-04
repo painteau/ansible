@@ -1,0 +1,39 @@
+---
+- name: Nettoyer et mettre à jour /root/.ssh/authorized_keys
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    revoked_keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHrrIgGvlMdz5AEpvmWQPfc3nlPrNeUN/JG3hMu7UaDq"
+      - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCQXq+bQLVsssjuFP5rkHscYwcEnjHxH/Nykht2pMz34jXY02+2hh4v2+L5d2Vt079G5BQ4pJvcV8+lOOJ5K48xUng2IfBwV1Jy6TLyuiShpQ5P8EaRPR5wRFvnpCk6hdWiicc9zhCZ6HrJbq2+k7l0sJXxd2VLQUb+XMAS+lNe2Uu0hbiaZahD/wHxELXei+IAbq0Vccc3maZgcKIdlEO47lM2EwAue9LKfE2Hb2MyQW1bXxn2NkEjv91QcMT9cwVmL8MNnX4A5LBIrQmAALG33b6366wUSeiiJrifEa9hjsOwzZgTaZ/XoLq+5KQqiuJDNnhTcVMjXtEUp1vC/YP/hKU01t/sVDgZTgdHl6bwMCz7h8WyXyvjZQKtvntmB8ArpRjkuVYbxKMSTFN5UhXLL/Ee8MWSbLtFfzwPqMDxq090ybK61NCUy6GuTdBEUhLecriUYMxPaRvYrSQZetvXqR9Yww/a4jUNgKd/SuQm1N5kQt5sddi9XxBwQQZ6jWk="
+    ensure_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICqI2+fxkORKD/Qeyib8h51KIGrAWOknWKNd0pjy+KaO"
+
+  tasks:
+    - name: Remove revoked keys from root authorized_keys (matches by key body, comment ignored)
+      ansible.builtin.authorized_key:
+        user: root
+        key: "{{ item }}"
+        state: absent
+      loop: "{{ revoked_keys }}"
+      tags: revoke
+
+    - name: Ensure required key is present for root
+      ansible.builtin.authorized_key:
+        user: root
+        key: "{{ ensure_key }}"
+        state: present
+        manage_dir: yes
+      tags: add
+
+    - name: Afficher le contenu final de /root/.ssh/authorized_keys
+      ansible.builtin.command: cat /root/.ssh/authorized_keys
+      register: authkeys
+      changed_when: false
+      tags: show
+
+    - name: Afficher résultat (stdout_lines)
+      ansible.builtin.debug:
+        var: authkeys.stdout_lines
+      tags: show
