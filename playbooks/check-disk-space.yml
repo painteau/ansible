@@ -1,0 +1,57 @@
+---
+- name: Vérification de l'espace disque sur les serveurs Debian
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Vérifier que l'hôte est bien Debian
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['os_family'] == "Debian"
+        fail_msg: "Ce playbook est conçu pour les systèmes Debian uniquement"
+        success_msg: "Système Debian détecté : {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
+
+    - name: Récupérer l'espace disque avec df
+      ansible.builtin.command: df -h
+      register: df_output
+      changed_when: false
+
+    - name: Afficher l'espace disque sur {{ inventory_hostname }}
+      ansible.builtin.debug:
+        msg: "{{ df_output.stdout_lines }}"
+
+    - name: Récupérer l'utilisation détaillée des partitions
+      ansible.builtin.shell: df -h | awk 'NR==1 || /^\/dev\// {print}'
+      register: disk_partitions
+      changed_when: false
+
+    - name: Afficher uniquement les partitions principales
+      ansible.builtin.debug:
+        msg: "{{ disk_partitions.stdout_lines }}"
+
+    - name: Vérifier l'espace disque disponible (racine)
+      ansible.builtin.shell: df -h / | awk 'NR==2 {print $5}' | sed 's/%//'
+      register: root_usage
+      changed_when: false
+
+    - name: Alerter si l'espace disque racine dépasse 80%
+      ansible.builtin.debug:
+        msg: "⚠️  ATTENTION : L'espace disque sur / est utilisé à {{ root_usage.stdout }}%"
+      when: root_usage.stdout | int > 80
+
+    - name: Afficher un message de succès si l'espace est suffisant
+      ansible.builtin.debug:
+        msg: "✓ Espace disque sur / : {{ root_usage.stdout }}% utilisé - OK"
+      when: root_usage.stdout | int <= 80
+
+    - name: Récupérer les 10 plus gros répertoires dans /var
+      ansible.builtin.shell: du -h /var --max-depth=1 2>/dev/null | sort -rh | head -10
+      register: var_usage
+      changed_when: false
+      failed_when: false
+
+    - name: Afficher les 10 plus gros répertoires dans /var
+      ansible.builtin.debug:
+        msg: "{{ var_usage.stdout_lines }}"
+      when: var_usage.stdout_lines | length > 0
