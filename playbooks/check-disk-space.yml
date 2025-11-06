@@ -1,17 +1,10 @@
 ---
-- name: Vérification de l'espace disque sur les serveurs Debian
+- name: Vérification de l'espace disque sur les serveurs
   hosts: all
   become: true
-  gather_facts: true
+  gather_facts: false
 
   tasks:
-    - name: Vérifier que l'hôte est bien Debian
-      ansible.builtin.assert:
-        that:
-          - ansible_facts['os_family'] == "Debian"
-        fail_msg: "Ce playbook est conçu pour les systèmes Debian uniquement"
-        success_msg: "Système Debian détecté : {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
-
     - name: Récupérer l'espace disque avec df
       ansible.builtin.command: df -h
       register: df_output
